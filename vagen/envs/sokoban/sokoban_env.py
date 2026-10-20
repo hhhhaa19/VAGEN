@@ -47,6 +47,9 @@ class SokobanEnvConfig:
     prompt_format: str = "wm"  # "free_think" or "wm"
     format_reward: float = 0.1  # Reward for following the format correctly
     success_reward: float = 1.0
+    # Paper (VAGEN Table 17) reward: use gym-sokoban's own step reward
+    # (+10 finished, +1 box on target, -1 box off target, -0.1 per step) instead of success_reward.
+    use_env_reward: bool = False
     # Whether malformed responses may still execute a salvaged action.
     #
     #   True  (default) -- discard it.
@@ -220,10 +223,13 @@ class Sokoban(GymImageEnv, HasStateReward):
                 # Offload the blocking gym step to a thread
                 _obs, _step_reward, step_done, _ = await asyncio.to_thread(self.env.step, action_int)
                 self.valid_actions.append(action)
+                if self.config.use_env_reward:
+                    reward += float(_step_reward)
                 # Early success check
                 if self._is_success():
                     done = True
-                    reward += self.config.success_reward
+                    if not self.config.use_env_reward:
+                        reward += self.config.success_reward
                     metrics["traj_metrics"]["success"] = True
                     break
             else:
