@@ -34,6 +34,23 @@ Validation is 256 held-out maps with greedy decoding every 20 steps, unless note
 | 6312383 | 11-01 | `train_legacy` | legacy | Smoke test, local Qwen judge, 128 seen-overlap test levels | 2 | 11 min | 0.102 | 0.102 |
 | 6734879 | 11-01 | `train_legacy` | legacy | Full baseline, local Qwen judge, 12 h limit | 300 | queued | - | - |
 
+## wandb runs
+
+Team `cs496_vagen`. Open with a team account.
+
+| Job | Run | wandb |
+|---|---|---|
+| 4115605 | Trial | [22rb1ibe](https://wandb.ai/cs496_vagen/vagen-trial/runs/22rb1ibe) |
+| 4539759 | Main baseline | [tk9f26l3](https://wandb.ai/cs496_vagen/vagen-experiments/runs/tk9f26l3) |
+| 4639622 | Paper rewards, exact scorer, no KL | [jkuvuc4e](https://wandb.ai/cs496_vagen/vagen-experiments/runs/jkuvuc4e) |
+| 5612726 | KL test | [h1say55j](https://wandb.ai/cs496_vagen/vagen-experiments/runs/h1say55j) |
+| 5614549 | Paper config + KL | [6fxjbrms](https://wandb.ai/cs496_vagen/vagen-experiments/runs/6fxjbrms) |
+| 5896123 | Rerun to 200 | [e87c4bjb](https://wandb.ai/cs496_vagen/vagen-experiments/runs/e87c4bjb) |
+| 6312383 | Legacy smoke test | Offline: `offline-run-20261101_022335-fifgq4ip` |
+| 6734879 | Legacy baseline | Project `vagen-legacy`, once running |
+
+Job 5834258 logs to the console only.
+
 ## Evaluation runs
 
 | Job | Date | Script | Result |
