@@ -27,7 +27,7 @@ Validation is 256 held-out maps with greedy decoding every 20 steps, unless note
 | 4539759 | 10-20 | `train_full` | main | Script defaults: exact scorer, T=1.0, no KL. Main baseline | 401 | 6 h 16 min | 0.445 (180) | 0.219 |
 | 4639622 | 10-20 | `train_paper` | paper config | Paper rewards (0.5/0.5, score_base 0), still exact scorer, T=1.0, no KL | 401 | 5 h 11 min | 0.480 | 0.406 |
 | 4770153 | 10-21 | `train_paper_full` | paper config | + judge, T=0.7, top_p=0.95, KL 0.001. Crashed at start | 0 | 4 min | - | NotImplementedError |
-| 5463385 | 10-26 | `test_kl` | paper config + fix | 3-step KL test | 0 | 6 min | - | failed |
+| 5463385 | 10-26 | `test_kl` | not recorded | 3-step KL test | 0 | 6 min | - | failed |
 | 5612726 | 10-27 | `test_kl` | `paper-run` | KL test passes with PR #121 | 3 | 9 min | - | passed |
 | 5614549 | 10-27 | `train_paper_full` | `paper-run` | + rollout gpu_memory_utilization=0.4 to fit the judge | 401 | 6 h 16 min | 0.488 (400) | 0.488 |
 | 5896123 | 10-29 | `train_paper_rerun200` | `paper-run` | Same config, 200 steps, checkpoints every 50 | 200 | 3 h 07 min | 0.434 (180) | 0.422 |
@@ -38,14 +38,14 @@ Validation is 256 held-out maps with greedy decoding every 20 steps, unless note
 
 | Job | Date | Script | Result |
 |---|---|---|---|
-| 3951917 | 10-16 | `eval_zeroshot` | Untrained model through the evaluation script |
+| 3951917 | 10-16 | `eval_zeroshot` | Untrained model through the evaluation script: 0.164 success over 128 episodes |
 | 5834258 | 10-28 | `eval_protocol` | Step-400 model from 5614549: 0.570 on 128 seen levels, 0.488 on 256 held-out maps. Sampling and greedy give the same result |
 
 ## Decisions and findings
 
 - 2026-10-27: PR #121 lets the KL penalty start. Without it a fused reference policy raises NotImplementedError.
 - 2026-10-29: Checkpoints from 5614549 other than step 400 were deleted, so pre-drift checkpoints from that run no longer exist.
-- 2026-11-01: Rerun 5896123 is not bitwise identical to 5614549 despite full determinism flags.
+- 2026-10-29: Rerun 5896123 is not bitwise identical to 5614549 despite full determinism flags.
 - 2026-11-01: Perception text leaves the required vocabulary at about step 40 in 5896123 and step 220 in 5614549, and both reach 0.422 at step 200. Parseable rates at that step are 0.08 and 0.94.
 - 2026-11-01: The authors state in issue #106 that the paper's experiments ran on the legacy code, so runs on main are not a direct comparison with 0.79.
 
