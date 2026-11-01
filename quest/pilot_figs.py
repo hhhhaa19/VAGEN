@@ -16,6 +16,7 @@ EXP = "/projects/p53316/hhhhaa19/VAGEN/exps/vagen-experiments"
 RUNS = {
     "paper": ("/projects/p53316/logs/vagen-paper-full_5614549.log", f"{EXP}/sokoban_bi_level_gae_paper_full_qwen25vl3b/validation"),
     "default": ("/projects/p53316/logs/vagen-full_4539759.log", f"{EXP}/sokoban_bi_level_gae_state_reward_qwen25vl3b/validation"),
+    "rerun": ("/projects/p53316/logs/vagen-paper-rerun200_5896123.log", f"{EXP}/sokoban_bi_level_gae_paper_rerun200_qwen25vl3b/validation"),
 }
 # Read from the authors' public report (hover tooltips), 2026-10-29; see evidence/9_curve_comparison.md.
 AUTHORS = {0: .125, 20: .156, 40: .273, 60: .414, 80: .547, 100: .555, 120: .555, 140: .602, 160: .688,
@@ -122,7 +123,7 @@ fig.savefig(f"{OUT}/fig2_val_success_vs_authors.png", dpi=200)
 
 # 3. World-model text drift vs validation success (two panels, shared x; no dual axis).
 fig, (top, bottom) = plt.subplots(2, 1, figsize=(11, 6.4), sharex=True, gridspec_kw={"height_ratios": [1, 1]})
-for name, color, label in (("paper", BLUE, "Paper config + KL (judge scorer)"), ("default", ORANGE, "Main default (exact scorer)")):
+for name, color, label in (("paper", BLUE, "Paper config + KL (judge scorer)"), ("rerun", AQUA, "Same config, rerun to step 200"), ("default", ORANGE, "Main default (exact scorer)")):
     d = drifts[name]
     xs = sorted(d)
     top.plot(xs, [d[x][0] for x in xs], color=color, marker="o", markersize=4, label=label)
@@ -131,12 +132,12 @@ for name, color, label in (("paper", BLUE, "Paper config + KL (judge scorer)"), 
 top.set_ylim(-0.03, 1.05)
 top.set_ylabel("Share of turns")
 top.set_title("<perception> written in the required vocabulary (parseable)")
-top.legend(loc="lower left", frameon=False, fontsize=10)
+top.legend(loc="upper right", frameon=False, fontsize=10)
 bottom.set_ylim(0, 0.6)
 bottom.set_ylabel("Success rate")
 bottom.set_title("Validation success (256 held-out maps)")
 bottom.set_xlabel("Training step")
-top.text(292, 0.42, "Perception drifts out of the vocabulary:\nmain default from step 200,\npaper config from step 220", fontsize=9.5, color=INK2)
+top.text(292, 0.42, "Same config, different drift point:\nstep 40 in the rerun, step 220 in the\nfirst run; both reach 0.422 at step 200", fontsize=9.5, color=INK2)
 fig.tight_layout()
 fig.savefig(f"{OUT}/fig3_wm_drift.png", dpi=200)
 print("wrote", sorted(os.listdir(OUT)))
