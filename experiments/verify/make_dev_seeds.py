@@ -27,8 +27,12 @@ DEV = ROOT / "examples/train/sokoban/val_sokoban_vision_sr_paper_dev.yaml"
 
 def room(seed):
     """The fingerprint of the seed's room, or None if it fails the test-set rules."""
-    with set_seed(seed):
-        fixed, state, _ = generate_room(dim=(6, 6), num_steps=20, num_boxes=1, second_player=False)
+    try:
+        with set_seed(seed):
+            fixed, state, _ = generate_room(dim=(6, 6), num_steps=20, num_boxes=1, second_player=False)
+    except (RuntimeError, RuntimeWarning):
+        # gym_sokoban fails on some seeds; the env skips them too (patch_sokoban_env.reset).
+        return None
     if not 1 <= len(get_shortest_action_path(fixed, state, MAX_DEPTH=200)) <= 5:
         return None
     if not _room_matches_partition(fixed, state, "eval", 4, 0):
