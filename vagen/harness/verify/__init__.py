@@ -1,3 +1,3 @@
-from vagen.harness.verify.verify import GenericNoteHarness, VerifyHarness
+from vagen.harness.verify.verify import GenericNoteHarness, NoRepeatHarness, VerifyHarness
 
-__all__ = ["GenericNoteHarness", "VerifyHarness"]
+__all__ = ["GenericNoteHarness", "NoRepeatHarness", "VerifyHarness"]
