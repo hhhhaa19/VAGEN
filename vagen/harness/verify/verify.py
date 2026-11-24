@@ -14,6 +14,13 @@ R (``NoRepeatHarness``). The same retry when the agent repeats exactly the actio
 just left the image unchanged, with a note stating that rule. It controls for a trivial
 loop fix.
 
+O (``OracleHarness``). D1 using the true state: the last prediction and the new perception
+are each checked against the environment's real layout, not against each other. If either
+is wrong, the same retry follows, and the note names which one was wrong and states the
+true layout. It is the upper bound on prediction-error feedback, and its counts separate a
+misperception from a wrong prediction, including when D1 would have raised a false alarm
+or missed an error.
+
 All keep one conversation per episode, so rows and metrics are assembled as for concat.
 Select one with an import path, e.g. ``trainer.harness=vagen.harness.verify:VerifyHarness``.
 Per-episode counts are appended as JSON lines to ``$VERIFY_LOG`` when it is set.
@@ -26,6 +33,7 @@ import os
 import re
 
 from vagen.envs.sokoban.state_reward_spec import exact_relations
+from vagen.envs.sokoban.state_reward_spec import relations as true_relations
 from vagen.envs.sokoban.utils.utils import parse_response
 from vagen.harness._common import assistant, obs_to_message, user
 from vagen.harness.concat import ConcatHarness
@@ -217,3 +225,122 @@ class NoRepeatHarness(VerifyHarness):
             else:
                 blocked = []
             messages.append(current)
+
+
+O_NOTE = (
+    "Your response above was not executed. {findings} The true state now is: \"{truth}\". "
+    "Look at the image again, then give your full response again in the required format."
+)
+
+_VERTICAL_TEXT = {"above": "above", "below": "below", "same": "in the same row"}
+_HORIZONTAL_TEXT = {"left": "left of", "right": "right of", "same": "in the same column as"}
+
+
+def describe(state: dict) -> str:
+    """A relation dict as a sentence in the environment's own vocabulary."""
+    parts = []
+    for name in ("box", "target"):
+        vertical, horizontal = state[name]
+        parts.append(f"the {name} is {_VERTICAL_TEXT[vertical]} and "
+                     f"{_HORIZONTAL_TEXT[horizontal]} the player")
+    sentence = ", and ".join(parts) + "."
+    return sentence[0].upper() + sentence[1:]
+
+
+def sokoban_of(env, depth: int = 8):
+    """The Sokoban env under the harness's wrappers (seam, adapter, state reward), or None."""
+    for _ in range(depth):
+        if env is None:
+            return None
+        if hasattr(getattr(env, "env", None), "room_state"):
+            return env
+        env = getattr(env, "env", None) or getattr(env, "inner", None)
+    return None
+
+
+def true_state(env) -> dict | None:
+    """The real box and target relations, or None unless exactly one of each exists."""
+    sokoban = sokoban_of(env)
+    if sokoban is None:
+        return None
+    found = {}
+    for item in true_relations(sokoban):
+        if item["object_id"] in found:
+            return None
+        found[item["object_id"]] = (item["vertical_relation"], item["horizontal_relation"])
+    return found if set(found) == {"box", "target"} else None
+
+
+class OracleHarness(VerifyHarness):
+    """O: D1 with the true state as the judge, and the true state in the note."""
+
+    setting = "O"
+
+    def judge(self, truth, prediction, perception, stats) -> str | None:
+        """Count this turn's errors against the truth; the note to send, or None."""
+        expected, seen = relations(prediction), relations(perception)
+        if truth is None:
+            stats["no_truth"] += 1
+            return None
+        if expected is None and seen is None:
+            return None
+        stats["checked"] += 1
+        prediction_wrong = expected is not None and expected != truth
+        perception_wrong = seen is not None and seen != truth
+        stats["prediction_wrong"] += prediction_wrong
+        stats["perception_wrong"] += perception_wrong
+        stats["both_wrong"] += prediction_wrong and perception_wrong
+        if expected is not None and seen is not None:
+            # What D1 would have done on this turn, judged by the truth.
+            stats["d1_comparable"] += 1
+            d1_fires = expected != seen
+            stats["d1_fires"] += d1_fires
+            stats["d1_false_alarm"] += d1_fires and not prediction_wrong
+            stats["d1_missed"] += prediction_wrong and not d1_fires
+        if not (prediction_wrong or perception_wrong):
+            return None
+        findings = []
+        if expected is not None:
+            verdict = "This was wrong." if prediction_wrong else "This was correct."
+            findings.append(f"Last turn you predicted: \"{prediction}\". {verdict}")
+        if seen is not None:
+            verdict = "This is wrong." if perception_wrong else "This is correct."
+            findings.append(f"Now you perceive: \"{perception}\". {verdict}")
+        return O_NOTE.format(findings=" ".join(findings), truth=describe(truth))
+
+    async def _run(self, client, env, stats) -> None:
+        for key in ("prediction_wrong", "perception_wrong", "both_wrong", "no_truth",
+                    "d1_comparable", "d1_fires", "d1_false_alarm", "d1_missed"):
+            stats[key] = 0
+        observation, _info = await env.reset()
+        messages = [await env.system_prompt(), obs_to_message(observation)]
+        spent = 0
+        previous_prediction = None
+
+        while True:
+            response, reason = await self._generate(client, messages, spent)
+            if response is None:
+                env.truncate(reason)
+                return
+            spent = response.usage.response_tokens
+
+            if stats["turns"] > 0:
+                perception = section(response.text, "perception")
+                note = self.judge(true_state(env), previous_prediction, perception, stats)
+                if note is not None:
+                    stats["retries"] += 1
+                    messages.append(assistant(response.text))
+                    messages.append(user(note))
+                    response, reason = await self._generate(client, messages, spent)
+                    if response is None:
+                        env.truncate(reason)
+                        return
+                    spent = response.usage.response_tokens
+
+            stats["turns"] += 1
+            messages.append(assistant(response.text))
+            previous_prediction = section(response.text, "prediction")
+            observation, _reward, terminated, truncated, _info = await env.step(response)
+            if terminated or truncated:
+                return
+            messages.append(obs_to_message(observation))

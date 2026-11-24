@@ -1,8 +1,8 @@
 #!/bin/bash
-# B, G, R and D1 on the dev set with main paper step 400, greedy decoding.
+# B, G, R, D1 and O on the dev set with main paper step 400, greedy decoding.
 # Same command as quest/eval_protocol.sbatch (quest-jobs branch); only the harness differs.
 # Submit from your own clone: cd /projects/p53316/bowu2026-cpu/VAGEN && sbatch experiments/verify/eval_dev.sbatch
-# Pick settings with SETTINGS="R G" sbatch ...; default runs all four.
+# Pick settings with SETTINGS="R G" sbatch ...; default runs all five.
 #SBATCH -A p53316
 #SBATCH -p gengpu
 #SBATCH --gres=gpu:4
@@ -29,8 +29,9 @@ declare -A HARNESS=(
   [G]=vagen.harness.verify:GenericNoteHarness
   [R]=vagen.harness.verify:NoRepeatHarness
   [D1]=vagen.harness.verify:VerifyHarness
+  [O]=vagen.harness.verify:OracleHarness
 )
-for name in ${SETTINGS:-B G R D1}; do
+for name in ${SETTINGS:-B G R D1 O}; do
   out=$V/exps/verify-dev/${VAL%.yaml}_$name
   mkdir -p "$out"
   rm -f "$out/verify.jsonl"
