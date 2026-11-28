@@ -175,7 +175,8 @@ class NoRepeatHarness(VerifyHarness):
     setting = "R"
 
     async def _run(self, client, env, stats) -> None:
-        stats.update({"no_effect": 0, "unchecked": 0})
+        # retry_same: retries whose second response still repeats the blocked actions.
+        stats.update({"no_effect": 0, "unchecked": 0, "retry_same": 0})
         observation, _info = await env.reset()
         current = obs_to_message(observation)
         messages = [await env.system_prompt(), current]
@@ -200,6 +201,7 @@ class NoRepeatHarness(VerifyHarness):
                         env.truncate(reason)
                         return
                     spent = response.usage.response_tokens
+                    stats["retry_same"] += actions(response.text) == blocked
 
             stats["turns"] += 1
             messages.append(assistant(response.text))

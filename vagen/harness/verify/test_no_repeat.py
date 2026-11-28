@@ -64,6 +64,7 @@ async def main():
     assert note["role"] == "user" and "did not change the image" in note["content"] and "up" in note["content"]
     assert e.steps == [turn("Up"), turn("Right")], "R executes only the retry"
     assert s["no_effect"] == 1 and s["checked"] == 1 and s["retries"] == 1, s
+    assert s["retry_same"] == 0, "the retry chose Right, a different action"
     # Up has no effect, the agent tries something else -> no retry.
     c, e, s = await run([turn("Up"), turn("Right")], 2)
     assert len(c.calls) == 2 and s["retries"] == 0, "R leaves a different action alone"
@@ -79,6 +80,7 @@ async def main():
     # The retry is not checked again: one note per turn at most, as in D1.
     c, e, s = await run([turn("Up")] * 5, 3)
     assert len(c.calls) == 5 and s["retries"] == 2, s
+    assert s["retry_same"] == 2, "both retries ignored the note and repeated Up"
     # Text observations have no frames -> nothing is judged, the turn is counted as unchecked.
     c, e, s = await run([turn("Up"), turn("Up")], 2, images=False)
     assert len(c.calls) == 2 and s["unchecked"] == 1 and s["retries"] == 0, s
